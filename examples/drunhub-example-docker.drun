@@ -1,0 +1,45 @@
+version: 2.0
+
+# This file would be placed in drunhub at: ops/docker.drun
+# It provides reusable Docker operations
+
+project "docker" version "1.0":
+  parameter $registry as string defaults to "docker.io"
+  parameter $image_name as string
+
+  snippet "check-docker":
+    detect docker is installed
+    info "✓ Docker is available"
+
+  snippet "login":
+    step "Logging into Docker registry"
+    run "docker login {$registry}"
+    success "✓ Logged into {$registry}"
+
+template "build-image":
+  requires:
+    $image_name
+    $tag
+
+  step "Building Docker image: {$image_name}:{$tag}"
+  run "docker build -t {$image_name}:{$tag} ."
+  success "✓ Built {$image_name}:{$tag}"
+
+template "push-image":
+  requires:
+    $image_name
+    $tag
+
+  step "Pushing Docker image: {$image_name}:{$tag}"
+  run "docker push {$image_name}:{$tag}"
+  success "✓ Pushed {$image_name}:{$tag}"
+
+task "deploy":
+  given:
+    $image_name
+    $tag defaults to "latest"
+
+  use check-docker
+  call build-image($image_name, $tag)
+  call push-image($image_name, $tag)
+  success "✓ Successfully deployed {$image_name}:{$tag}"
